@@ -6,9 +6,6 @@ import sys
 from flask_cors import CORS 
 
 
-
-
-# Ensure flask-pymongo is installed
 try:
     import flask_pymongo
 except ModuleNotFoundError:
