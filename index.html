@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center">
+    <nav class="w-full bg-blue-500 text-white p-4">
+        <div class="container mx-auto flex justify-between">
+            <h1 class="text-lg font-bold">To-Do App</h1>
+            <div class="space-x-4">
+                <button onclick="showTab('add-task')" class="py-2 px-4 bg-blue-600 rounded hover:bg-blue-700">Add Task</button>
+                <button onclick="showTab('view-tasks')" class="py-2 px-4 bg-blue-600 rounded hover:bg-blue-700">View Tasks</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="w-full max-w-2xl bg-white rounded shadow-md p-6 mt-4">
+        <!-- Add Task Tab -->
+        <div id="add-task-tab" class="tab">
+            <h2 class="text-2xl font-bold text-gray-700 mb-4">Add Task</h2>
+            <form id="add-task-form" class="mb-4">
+                <div class="flex flex-col space-y-2">
+                    <input 
+                        type="text" 
+                        id="title" 
+                        placeholder="Task Title" 
+                        class="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <textarea 
+                        id="description" 
+                        placeholder="Task Description" 
+                        class="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    <button 
+                        type="submit" 
+                        class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600">
+                        Add Task
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- View Tasks Tab -->
+        <div id="view-tasks-tab" class="tab hidden">
+            <h2 class="text-2xl font-bold text-gray-700 mb-4">Tasks</h2>
+            <div id="tasks" class="space-y-4">
+                <!-- Task items will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:5000/todo";
+
+        // Tab Switching
+        function showTab(tabId) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            document.getElementById(`${tabId}-tab`).classList.remove('hidden');
+
+            // Refreshing tasks when switching to View Tasks tab
+            if (tabId === 'view-tasks') {
+                fetchTasks();
+            }
+        }
+
+        // Fetch and display tasks
+        async function fetchTasks() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) {
+                    throw new Error(`Error fetching tasks: ${response.statusText}`);
+                }
+                const tasks = await response.json();
+                console.log("Tasks fetched successfully:", tasks);
+
+                const tasksContainer = document.getElementById("tasks");
+                tasksContainer.innerHTML = "";
+
+                if (tasks.length === 0) {
+                    tasksContainer.innerHTML = `<p class='text-gray-600'>No tasks found. Add a new task to get started!</p>`;
+                    return;
+                }
+
+                tasks.forEach(task => {
+                    const taskElement = document.createElement("div");
+                    taskElement.classList = "border rounded p-4 bg-gray-50 flex justify-between items-center";
+                    taskElement.innerHTML = `
+                        <div>
+                            <h2 class="text-lg font-semibold">${task.title}</h2>
+                            <p class="text-gray-600">${task.description}</p>
+                        </div>
+                        <div class="space-x-2">
+                            <button onclick="editTask('${task._id}')" class="bg-yellow-500 text-white py-1 px-3 rounded hover:bg-yellow-600">Edit</button>
+                            <button onclick="deleteTask('${task._id}')" class="bg-red-500 text-white py-1 px-3 rounded hover:bg-red-600">Delete</button>
+                        </div>
+                    `;
+                    tasksContainer.appendChild(taskElement);
+                });
+            } catch (error) {
+                console.error("Error fetching tasks:", error);
+                alert("Failed to fetch tasks. Please try again later.");
+            }
+        }
+
+        // Add a task
+        document.getElementById("add-task-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const title = document.getElementById("title").value;
+            const description = document.getElementById("description").value;
+
+            if (!title) {
+                alert("Task title is required.");
+                return;
+            }
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ title, description })
+                });
+                console.log(response);
+
+                if (!response.ok) {
+                    throw new Error(`Error adding task: ${response.statusText}`);
+                }
+
+                document.getElementById("add-task-form").reset();
+                console.log("Task added successfully!");
+                showTab('view-tasks');
+            } catch (error) {
+                console.error("Error adding task:", error);
+                alert("Failed to add task. Please try again later.");
+            }
+        });
+
+        // Delete a task
+        async function deleteTask(id) {
+            try {
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: "DELETE"
+                });
+                if (!response.ok) {
+                    throw new Error(`Error deleting task: ${response.statusText}`);
+                }
+                console.log("Task deleted successfully!");
+                fetchTasks();
+            } catch (error) {
+                console.error("Error deleting task:", error);
+                alert("Failed to delete task. Please try again later.");
+            }
+        }
+
+        // Edit a task
+        async function editTask(id) {
+            const newTitle = prompt("Enter new title:");
+            const newDescription = prompt("Enter new description:");
+
+            if (newTitle) {
+                try {
+                    const response = await fetch(`${API_URL}/${id}`, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({ title: newTitle, description: newDescription })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Error editing task: ${response.statusText}`);
+                    }
+                    console.log("Task edited successfully!");
+                    fetchTasks();
+                } catch (error) {
+                    console.error("Error editing task:", error);
+                    alert("Failed to edit task. Please try again later.");
+                }
+            }
+        }
+
+        // Initial fetch
+        fetchTasks();
+    </script>
+</body>
+</html>
+
